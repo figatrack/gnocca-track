@@ -54,8 +54,8 @@ API_PROXY_TARGET=http://localhost:5002
 ## Render Deploy
 
 - Service type: Web Service
-- Build command: `corepack pnpm install --frozen-lockfile && corepack pnpm --filter @workspace/gnocca-track run build && corepack pnpm --filter @workspace/api-server run build`
-- Start command: `corepack pnpm --filter @workspace/api-server run start`
+- Build command: `npx --yes pnpm@10.33.2 install --frozen-lockfile --prod=false && npx --yes pnpm@10.33.2 --filter @workspace/gnocca-track run build && npx --yes pnpm@10.33.2 --filter @workspace/api-server run build`
+- Start command: `npx --yes pnpm@10.33.2 --filter @workspace/api-server run start`
 - Health check path: `/api/healthz`
 
 ## Product Notes

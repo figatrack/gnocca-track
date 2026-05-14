@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: gnocca-track
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npx --yes pnpm@10.33.2 install --frozen-lockfile --prod=false && npx --yes pnpm@10.33.2 --filter @workspace/gnocca-track run build && npx --yes pnpm@10.33.2 --filter @workspace/api-server run build
+    startCommand: npx --yes pnpm@10.33.2 --filter @workspace/api-server run start
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 24.14.1
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_PIN
+        sync: false

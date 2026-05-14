@@ -37,12 +37,12 @@ pnpm --filter @workspace/api-server run build  # must succeed
 ### Service Required
 Use a single **Web Service**. The Express API serves `/api/*` and also serves the Vite frontend build for every non-API route.
 
-- Build command: `corepack pnpm install --frozen-lockfile && corepack pnpm --filter @workspace/gnocca-track run build && corepack pnpm --filter @workspace/api-server run build`
-- Start command: `corepack pnpm --filter @workspace/api-server run start`
+- Build command: `npx --yes pnpm@10.33.2 install --frozen-lockfile --prod=false && npx --yes pnpm@10.33.2 --filter @workspace/gnocca-track run build && npx --yes pnpm@10.33.2 --filter @workspace/api-server run build`
+- Start command: `npx --yes pnpm@10.33.2 --filter @workspace/api-server run start`
 - Health check path: `/api/healthz`
 - Environment: `DATABASE_URL`, `ADMIN_PIN`, `NODE_ENV=production`, `NODE_VERSION=24.14.1`
 
-Do not use `corepack enable` on Render: the system package-manager shim directory can be read-only.
+Do not use `corepack enable` on Render: the system package-manager shim directory can be read-only. The commands above use `npx` to run the pinned pnpm version without touching Corepack shims.
 
 ### Environment Variables for Production
 ```
