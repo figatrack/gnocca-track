@@ -34,23 +34,22 @@ pnpm --filter @workspace/api-server run build  # must succeed
 
 ## Deployment (Render)
 
-### Services Required
-1. **Web Service** — Node.js (Express API server)
-   - Build command: `pnpm install && pnpm --filter @workspace/api-server run build`
-   - Start command: `node artifacts/api-server/dist/index.mjs`
-   - Environment: `DATABASE_URL`, `ADMIN_PIN`, `PORT`, `NODE_ENV=production`
-2. **Static Site** — Vite build for frontend
-   - Build command: `pnpm install && pnpm --filter @workspace/gnocca-track run build`
-   - Publish directory: `artifacts/gnocca-track/dist/public`
-   - Rewrites: `/* → /index.html`
+### Service Required
+Use a single **Web Service**. The Express API serves `/api/*` and also serves the Vite frontend build for every non-API route.
+
+- Build command: `corepack pnpm install --frozen-lockfile && corepack pnpm --filter @workspace/gnocca-track run build && corepack pnpm --filter @workspace/api-server run build`
+- Start command: `corepack pnpm --filter @workspace/api-server run start`
+- Health check path: `/api/healthz`
+- Environment: `DATABASE_URL`, `ADMIN_PIN`, `NODE_ENV=production`, `NODE_VERSION=24.14.1`
+
+Do not use `corepack enable` on Render: the system package-manager shim directory can be read-only.
 
 ### Environment Variables for Production
 ```
 DATABASE_URL=<supabase or render postgres connection string>
 ADMIN_PIN=<strong private admin PIN>
 NODE_ENV=production
-PORT=10000
-CORS_ORIGIN=https://gnoccatrack.com
+NODE_VERSION=24.14.1
 ```
 
 ### Render PostgreSQL
@@ -60,7 +59,7 @@ postgresql://user:password@host:5432/database
 ```
 
 ### Domain & CORS
-Set `CORS_ORIGIN` to the production frontend domain.
+For the single-service deployment, `CORS_ORIGIN` can be omitted because frontend and API share the same origin.
 
 ### Post-Deploy Verification
 1. GET `/api/healthz` → `{ "status": "ok" }`

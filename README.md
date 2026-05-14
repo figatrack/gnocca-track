@@ -4,6 +4,7 @@ GnoccaTrack is a mobile-first nightlife radar PWA. Users tap "Qui Gnocca" to sig
 
 ## Run Locally
 
+- Node.js 24 is the production target.
 - `pnpm install`
 - `pnpm --filter @workspace/api-server run dev` - run the API server on `PORT` or `5002`
 - `pnpm --filter @workspace/gnocca-track run dev` - run the frontend on `PORT` or `5001`
@@ -49,6 +50,13 @@ API_PROXY_TARGET=http://localhost:5002
 - `artifacts/gnocca-track` - React/Vite PWA
 - `artifacts/mockup-sandbox` - component preview sandbox
 - `DNA` - project documentation
+
+## Render Deploy
+
+- Service type: Web Service
+- Build command: `corepack pnpm install --frozen-lockfile && corepack pnpm --filter @workspace/gnocca-track run build && corepack pnpm --filter @workspace/api-server run build`
+- Start command: `corepack pnpm --filter @workspace/api-server run start`
+- Health check path: `/api/healthz`
 
 ## Product Notes
 
