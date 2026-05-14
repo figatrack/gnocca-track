@@ -13,7 +13,7 @@ import {
 import type { Hotspot } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getStoredUser, getTheme, setTheme } from "@/lib/storage";
-import { User, Sun, Moon, Crosshair, MapPin, CheckCircle, Navigation } from "lucide-react";
+import { User, Sun, Moon, Crosshair, MapPin, CheckCircle, Navigation, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import appIcon from "@/assets/app-icon.png";
 
@@ -55,7 +55,7 @@ interface OverpassElement {
   lat?: number;
   lon?: number;
   center?: { lat?: number; lon?: number };
-  tags?: { name?: string; amenity?: string };
+  tags?: { name?: string; amenity?: string; leisure?: string };
 }
 
 const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
@@ -66,8 +66,11 @@ const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
 
 const CARTO_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 const HOTSPOT_RADIUS_METERS = 50_000;
-const MIN_VENUE_RADIUS_METERS = 300;
+const MIN_VENUE_RADIUS_METERS = 500;
+const MAX_VENUE_RESULTS = 300;
 const DIRECT_CONFIRM_DISTANCE_METERS = 80;
+const VENUE_AMENITY_PATTERN = "bar|pub|restaurant|cafe|nightclub|fast_food|food_court|ice_cream|biergarten|events_venue";
+const VENUE_LEISURE_PATTERN = "dance";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -119,23 +122,28 @@ async function fetchNearbyVenues(
   radiusMeters: number,
   maxVenues: number,
 ): Promise<NearbyVenue[]> {
-  const query = `[out:json][timeout:10];(node["amenity"~"^(bar|pub|restaurant|cafe|nightclub)$"](around:${radiusMeters},${lat},${lng});way["amenity"~"^(bar|pub|restaurant|cafe|nightclub)$"](around:${radiusMeters},${lat},${lng});relation["amenity"~"^(bar|pub|restaurant|cafe|nightclub)$"](around:${radiusMeters},${lat},${lng}););out center;`;
+  const query = `[out:json][timeout:10];(node["amenity"~"^(${VENUE_AMENITY_PATTERN})$"](around:${radiusMeters},${lat},${lng});way["amenity"~"^(${VENUE_AMENITY_PATTERN})$"](around:${radiusMeters},${lat},${lng});relation["amenity"~"^(${VENUE_AMENITY_PATTERN})$"](around:${radiusMeters},${lat},${lng});node["leisure"~"^(${VENUE_LEISURE_PATTERN})$"](around:${radiusMeters},${lat},${lng});way["leisure"~"^(${VENUE_LEISURE_PATTERN})$"](around:${radiusMeters},${lat},${lng});relation["leisure"~"^(${VENUE_LEISURE_PATTERN})$"](around:${radiusMeters},${lat},${lng}););out center;`;
   try {
     const resp = await fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: query });
     if (!resp.ok) return [];
     const data = await resp.json();
     const elements = (data.elements ?? []) as OverpassElement[];
+    const seen = new Set<string>();
     const venues = elements.reduce<NearbyVenue[]>((acc, el) => {
       const venueLat = el.lat ?? el.center?.lat;
       const venueLng = el.lon ?? el.center?.lon;
       if (!el.tags?.name || venueLat === undefined || venueLng === undefined) return acc;
+      const osmId = `${el.type ?? "osm"}/${el.id}`;
+      const dedupeKey = `${osmId}:${el.tags.name}`;
+      if (seen.has(dedupeKey)) return acc;
+      seen.add(dedupeKey);
       acc.push({
         name: el.tags.name,
         lat: venueLat,
         lng: venueLng,
         distance: haversineDistance(lat, lng, venueLat, venueLng),
-        osmId: `${el.type ?? "osm"}/${el.id}`,
-        type: el.tags.amenity,
+        osmId,
+        type: el.tags.amenity ?? el.tags.leisure,
       });
       return acc;
     }, []);
@@ -548,7 +556,7 @@ export default function MapPage() {
       pos.lat,
       pos.lng,
       venueSearchRadius,
-      publicConfig.maxVenuesShown,
+      Math.max(publicConfig.maxVenuesShown, MAX_VENUE_RESULTS),
     );
     setNearbyVenues(venues);
 
@@ -879,6 +887,15 @@ function SheetVenues({
   onClose: () => void;
 }) {
   void onClose;
+  const [searchTerm, setSearchTerm] = useState("");
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredVenues = normalizedSearch
+    ? venues.filter((v) =>
+      v.name.toLowerCase().includes(normalizedSearch) ||
+      (v.type ?? "").toLowerCase().includes(normalizedSearch)
+    )
+    : venues;
+
   return (
     <motion.div
       initial={{ y: "100%" }}
@@ -894,13 +911,25 @@ function SheetVenues({
     >
       <div className="flex-none">
         <SheetHandle />
-        <h2 className="text-lg font-black text-foreground mb-4">Scegli il locale</h2>
+        <div className="flex items-end justify-between gap-3 mb-4">
+          <h2 className="text-lg font-black text-foreground">Scegli il locale</h2>
+          <span className="text-xs font-semibold text-muted-foreground">{venues.length}</span>
+        </div>
+        <label className="mb-4 flex h-11 items-center gap-3 rounded-2xl border border-border bg-background px-4">
+          <Search size={16} className="text-muted-foreground flex-none" />
+          <input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Cerca locale"
+            className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground"
+          />
+        </label>
       </div>
       <div
         className="flex-1 overflow-y-auto flex flex-col gap-3"
         style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
       >
-        {venues.map((v) => (
+        {filteredVenues.map((v) => (
           <button
             key={v.osmId ?? v.name}
             onClick={() => onSelect(v)}
@@ -919,6 +948,11 @@ function SheetVenues({
             </div>
           </button>
         ))}
+        {filteredVenues.length === 0 && (
+          <div className="rounded-2xl border border-border bg-background px-4 py-5 text-center text-sm font-semibold text-muted-foreground">
+            Nessun locale trovato
+          </div>
+        )}
       </div>
     </motion.div>
   );
