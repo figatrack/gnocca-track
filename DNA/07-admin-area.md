@@ -2,9 +2,9 @@
 
 ## Access
 
-Route: `/admin`
+Route: `/admina`
 
-Protected by a simple PIN gate (hardcoded in the frontend component). The default admin PIN is `admin1234`. Change this before production.
+Protected by a PIN gate that validates against the server-side `ADMIN_PIN` through the `x-admin-pin` header.
 
 ## Admin Tabs
 
@@ -61,7 +61,4 @@ POST  /api/admin/users/{id}/unblock
 
 ## Security Note
 
-The admin panel is protected only by a frontend PIN check. For production:
-- Move the admin PIN to a server-side environment variable
-- Add server-side admin middleware (check a header or session token)
-- Consider IP allowlisting for the admin routes
+The admin panel uses a server-side PIN check. For production, keep `ADMIN_PIN` private and consider IP allowlisting for the admin routes.

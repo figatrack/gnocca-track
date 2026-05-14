@@ -23,7 +23,7 @@ pnpm --filter @workspace/api-server run build  # must succeed
 # manual test: onboarding flow
 # manual test: Qui Gnocca button
 # manual test: hotspot appears on map
-# manual test: admin panel access
+# manual test: admin panel access at /admina
 ```
 
 ### What Must NOT Be Committed
@@ -67,4 +67,4 @@ Set `CORS_ORIGIN` to the production frontend domain.
 2. GET `/api/hotspots` → array of hotspots
 3. Load frontend → onboarding screen
 4. Complete onboarding → map screen with hotspot markers
-5. Admin panel access → stats visible
+5. Admin panel at `/admina` → stats visible

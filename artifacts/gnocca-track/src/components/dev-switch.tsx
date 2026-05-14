@@ -12,7 +12,7 @@ export function DevSwitch() {
     setMode(next);
     setDevMode(next);
     if (next === "admin") {
-      navigate("/admin");
+      navigate("/admina");
     } else {
       navigate("/");
     }

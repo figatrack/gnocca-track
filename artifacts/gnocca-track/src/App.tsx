@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Redirect, Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +13,8 @@ const ProfilePage = lazy(() => import("@/pages/profile"));
 const AdminPage = lazy(() => import("@/pages/admin"));
 const IntroPage = lazy(() => import("@/pages/intro"));
 const NotFound = lazy(() => import("@/pages/not-found"));
+
+const ADMIN_ROUTE = "/admina";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,8 +32,9 @@ function AppRoutes() {
     const user = getStoredUser();
     const base = import.meta.env.BASE_URL.replace(/\/$/, "");
     const relativePath = window.location.pathname.replace(base, "") || "/";
-    if (!user && relativePath !== "/onboarding") {
-      navigate("/onboarding");
+    const canEnterWithoutProfile = relativePath === "/onboarding" || relativePath === ADMIN_ROUTE || relativePath === "/admin";
+    if (!user && !canEnterWithoutProfile) {
+      navigate("/onboarding", { replace: true });
     }
   }, [navigate]);
 
@@ -40,7 +43,10 @@ function AppRoutes() {
       <Route path="/" component={MapPage} />
       <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/profile" component={ProfilePage} />
-      <Route path="/admin" component={AdminPage} />
+      <Route path={ADMIN_ROUTE} component={AdminPage} />
+      <Route path="/admin">
+        <Redirect to={ADMIN_ROUTE} replace />
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

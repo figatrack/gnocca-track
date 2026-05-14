@@ -56,4 +56,5 @@ API_PROXY_TARGET=http://localhost:5002
 - Hotspot intensity is computed from `clickCount`.
 - Seed hotspots use `is_seed=true` and `expires_at=NULL`.
 - The frontend calls `/api/*`; in local development Vite proxies those calls to `API_PROXY_TARGET`.
+- The admin panel canonical route is `/admina`.
 - The admin API requires the `x-admin-pin` header and `ADMIN_PIN` on the server.
