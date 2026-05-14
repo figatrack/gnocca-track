@@ -174,9 +174,13 @@ async function fetchVenuesCached(
 
 function createHotspotMarker(hotspot: Hotspot): HotspotMarkerEntry {
   const el = document.createElement("div");
-  el.className = `marker-${hotspot.intensity}`;
+  el.className = "hotspot-marker";
   el.style.cursor = "pointer";
   el.style.willChange = "transform";
+
+  const pulse = document.createElement("div");
+  pulse.className = `marker-${hotspot.intensity}`;
+  el.append(pulse);
 
   const popupRoot = document.createElement("div");
   popupRoot.style.cssText = "font-family:Outfit,sans-serif;padding:4px 2px;min-width:120px;";
@@ -198,7 +202,7 @@ function createHotspotMarker(hotspot: Hotspot): HotspotMarkerEntry {
 
   return {
     marker,
-    el,
+    el: pulse,
     title,
     count,
     lat: hotspot.lat,
