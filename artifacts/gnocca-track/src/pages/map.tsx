@@ -71,6 +71,15 @@ const MAX_VENUE_RESULTS = 300;
 const DIRECT_CONFIRM_DISTANCE_METERS = 80;
 const VENUE_AMENITY_PATTERN = "bar|pub|restaurant|cafe|nightclub|fast_food|food_court|ice_cream|biergarten|events_venue";
 const VENUE_LEISURE_PATTERN = "dance";
+const CURATED_VENUES: Array<Omit<NearbyVenue, "distance">> = [
+  {
+    name: "Camera con Vista Bistrot",
+    lat: 44.4927488,
+    lng: 11.3477163,
+    osmId: "manual/camera-con-vista-bistrot",
+    type: "bistrot",
+  },
+];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -147,6 +156,14 @@ async function fetchNearbyVenues(
       });
       return acc;
     }, []);
+
+    for (const venue of CURATED_VENUES) {
+      const distance = haversineDistance(lat, lng, venue.lat, venue.lng);
+      if (distance > radiusMeters) continue;
+      const normalizedName = venue.name.toLowerCase();
+      if (venues.some((v) => v.osmId === venue.osmId || v.name.toLowerCase() === normalizedName)) continue;
+      venues.push({ ...venue, distance });
+    }
 
     return venues
       .sort((a: NearbyVenue, b: NearbyVenue) => a.distance - b.distance)
