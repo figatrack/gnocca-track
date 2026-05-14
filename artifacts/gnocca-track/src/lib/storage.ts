@@ -6,21 +6,45 @@ const USER_KEY = "gt_user";
 const DEV_MODE_KEY = "gt_dev_mode";
 const INTRO_SESSION_KEY = "gt_intro_shown";
 
+function safeGet(storage: Storage, key: string): string | null {
+  try {
+    return storage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSet(storage: Storage, key: string, value: string) {
+  try {
+    storage.setItem(key, value);
+  } catch {
+    // Storage can be unavailable in restricted mobile browser contexts.
+  }
+}
+
+function safeRemove(storage: Storage, key: string) {
+  try {
+    storage.removeItem(key);
+  } catch {
+    // Storage can be unavailable in restricted mobile browser contexts.
+  }
+}
+
 export function getDeviceId(): string {
-  let id = localStorage.getItem(DEVICE_ID_KEY);
+  let id = safeGet(localStorage, DEVICE_ID_KEY);
   if (!id) {
     id = uuidv4();
-    localStorage.setItem(DEVICE_ID_KEY, id);
+    safeSet(localStorage, DEVICE_ID_KEY, id);
   }
   return id;
 }
 
 export function getTheme(): "dark" | "light" {
-  return (localStorage.getItem(THEME_KEY) as "dark" | "light") || "dark";
+  return (safeGet(localStorage, THEME_KEY) as "dark" | "light") || "dark";
 }
 
 export function setTheme(theme: "dark" | "light") {
-  localStorage.setItem(THEME_KEY, theme);
+  safeSet(localStorage, THEME_KEY, theme);
 }
 
 export interface StoredUser {
@@ -29,7 +53,7 @@ export interface StoredUser {
 }
 
 export function getStoredUser(): StoredUser | null {
-  const raw = localStorage.getItem(USER_KEY);
+  const raw = safeGet(localStorage, USER_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as StoredUser;
@@ -39,27 +63,27 @@ export function getStoredUser(): StoredUser | null {
 }
 
 export function setStoredUser(user: StoredUser) {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  safeSet(localStorage, USER_KEY, JSON.stringify(user));
 }
 
 export function clearStoredUser() {
-  localStorage.removeItem(USER_KEY);
+  safeRemove(localStorage, USER_KEY);
 }
 
 export type DevMode = "user" | "admin";
 
 export function getDevMode(): DevMode {
-  return (localStorage.getItem(DEV_MODE_KEY) as DevMode) || "user";
+  return (safeGet(localStorage, DEV_MODE_KEY) as DevMode) || "user";
 }
 
 export function setDevMode(mode: DevMode) {
-  localStorage.setItem(DEV_MODE_KEY, mode);
+  safeSet(localStorage, DEV_MODE_KEY, mode);
 }
 
 export function shouldShowIntro(): boolean {
-  return !sessionStorage.getItem(INTRO_SESSION_KEY);
+  return !safeGet(sessionStorage, INTRO_SESSION_KEY);
 }
 
 export function markIntroShown() {
-  sessionStorage.setItem(INTRO_SESSION_KEY, "1");
+  safeSet(sessionStorage, INTRO_SESSION_KEY, "1");
 }

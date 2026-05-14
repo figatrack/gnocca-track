@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { markIntroShown } from "@/lib/storage";
 import appIcon from "@/assets/app-icon.png";
@@ -158,14 +158,18 @@ export default function IntroPage({ onDone }: IntroPageProps) {
 }
 
 function FloatingParticles() {
-  const particles = Array.from({ length: 14 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: 2 + Math.random() * 4,
-    delay: Math.random() * 3,
-    duration: 3 + Math.random() * 4,
-  }));
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 14 }, (_, i) => ({
+        id: i,
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        size: 2 + Math.random() * 4,
+        delay: Math.random() * 3,
+        duration: 3 + Math.random() * 4,
+      })),
+    []
+  );
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">

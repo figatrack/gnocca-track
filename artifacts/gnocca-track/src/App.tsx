@@ -2,7 +2,8 @@ import { Redirect, Switch, Route, Router as WouterRouter, useLocation } from "wo
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Component, lazy, Suspense, useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { getTheme, getStoredUser, shouldShowIntro } from "@/lib/storage";
 import { DevSwitch } from "@/components/dev-switch";
 import { LandscapeBlocker } from "@/components/landscape-blocker";
@@ -26,17 +27,13 @@ const queryClient = new QueryClient({
 });
 
 function AppRoutes() {
-  const [, navigate] = useLocation();
+  const [location] = useLocation();
+  const user = getStoredUser();
+  const canEnterWithoutProfile = location === "/onboarding" || location === ADMIN_ROUTE || location === "/admin";
 
-  useEffect(() => {
-    const user = getStoredUser();
-    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-    const relativePath = window.location.pathname.replace(base, "") || "/";
-    const canEnterWithoutProfile = relativePath === "/onboarding" || relativePath === ADMIN_ROUTE || relativePath === "/admin";
-    if (!user && !canEnterWithoutProfile) {
-      navigate("/onboarding", { replace: true });
-    }
-  }, [navigate]);
+  if (!user && !canEnterWithoutProfile) {
+    return <Redirect to="/onboarding" replace />;
+  }
 
   return (
     <Switch>
@@ -61,11 +58,60 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 function AppFallback() {
-  return <div className="fixed inset-0 bg-background" />;
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-background px-6">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div
+          className="h-14 w-14 rounded-3xl shadow-[0_0_40px_rgba(255,8,128,0.35)]"
+          style={{ background: "linear-gradient(135deg, #FF0880 0%, #D90072 100%)" }}
+        />
+        <p className="text-sm font-bold text-foreground">Caricamento...</p>
+      </div>
+    </div>
+  );
+}
+
+class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed inset-0 flex items-center justify-center bg-background px-6 text-center">
+          <div className="flex max-w-xs flex-col items-center gap-4">
+            <div
+              className="h-14 w-14 rounded-3xl shadow-[0_0_40px_rgba(255,8,128,0.35)]"
+              style={{ background: "linear-gradient(135deg, #FF0880 0%, #D90072 100%)" }}
+            />
+            <div className="space-y-2">
+              <h1 className="text-lg font-black text-foreground">Errore di caricamento</h1>
+              <p className="text-sm font-medium text-muted-foreground">
+                Ricarica l'app per aggiornare i file locali.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="h-12 rounded-full bg-primary px-8 text-sm font-black text-primary-foreground shadow-lg"
+            >
+              Ricarica
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(() => shouldShowIntro());
+  const handleIntroDone = useCallback(() => setShowIntro(false), []);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -81,16 +127,18 @@ export default function App() {
           {/* Landscape blocker — always mounted, shown via CSS media query */}
           <LandscapeBlocker />
 
-          <Suspense fallback={<AppFallback />}>
-            {showIntro ? (
-              <IntroPage onDone={() => setShowIntro(false)} />
-            ) : (
-              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                <AppRoutes />
-                <DevSwitch />
-              </WouterRouter>
-            )}
-          </Suspense>
+          <AppErrorBoundary>
+            <Suspense fallback={<AppFallback />}>
+              {showIntro ? (
+                <IntroPage onDone={handleIntroDone} />
+              ) : (
+                <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                  <AppRoutes />
+                  <DevSwitch />
+                </WouterRouter>
+              )}
+            </Suspense>
+          </AppErrorBoundary>
         </ThemeProvider>
         <Toaster />
       </TooltipProvider>
