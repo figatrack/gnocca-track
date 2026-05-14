@@ -1,0 +1,726 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: GnoccaTrack API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: hotspots
+    description: Hotspot map data
+  - name: clicks
+    description: Qui Gnocca click registration
+  - name: venues
+    description: Nearby venue lookup
+  - name: users
+    description: Anonymous user accounts
+  - name: config
+    description: Public app configuration
+  - name: admin
+    description: Admin management
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /config:
+    get:
+      operationId: getPublicConfig
+      tags: [config]
+      summary: Get public app configuration
+      responses:
+        "200":
+          description: Public app configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicConfig"
+
+  /hotspots:
+    get:
+      operationId: listHotspots
+      tags: [hotspots]
+      summary: List all active hotspots
+      parameters:
+        - name: lat
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: lng
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: radius
+          in: query
+          required: false
+          schema:
+            type: number
+      responses:
+        "200":
+          description: List of hotspots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Hotspot"
+
+  /hotspots/{id}:
+    get:
+      operationId: getHotspot
+      tags: [hotspots]
+      summary: Get a single hotspot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Hotspot detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hotspot"
+        "404":
+          description: Not found
+
+  /hotspots/stats:
+    get:
+      operationId: getHotspotStats
+      tags: [hotspots]
+      summary: Get aggregated hotspot stats (dashboard wow)
+      responses:
+        "200":
+          description: Hotspot statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HotspotStats"
+
+  /clicks:
+    post:
+      operationId: registerClick
+      tags: [clicks]
+      summary: Register a Qui Gnocca click
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClickInput"
+      responses:
+        "201":
+          description: Click registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Click"
+        "429":
+          description: Cooldown active - too soon to click again
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CooldownResponse"
+        "400":
+          description: Bad request
+
+  /clicks/user/{deviceId}:
+    get:
+      operationId: getUserClicks
+      tags: [clicks]
+      summary: Get click history for a device/user
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User click history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Click"
+
+  /clicks/cooldown/{deviceId}:
+    get:
+      operationId: getCooldownStatus
+      tags: [clicks]
+      summary: Check cooldown status for a device
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cooldown status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CooldownResponse"
+
+  /users:
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create an anonymous user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "409":
+          description: Nickname already taken
+
+  /users/{deviceId}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user profile by device ID
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not found
+
+  /users/{deviceId}/verify-pin:
+    post:
+      operationId: verifyUserPin
+      tags: [users]
+      summary: Verify a user's PIN
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinVerifyInput"
+      responses:
+        "200":
+          description: PIN verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PinVerifyResult"
+
+  /users/{deviceId}/stats:
+    get:
+      operationId: getUserStats
+      tags: [users]
+      summary: Get user stats and badge
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserStats"
+
+  /admin/config:
+    get:
+      operationId: getAdminConfig
+      tags: [admin]
+      summary: Get admin configuration
+      responses:
+        "200":
+          description: Admin config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminConfig"
+    patch:
+      operationId: updateAdminConfig
+      tags: [admin]
+      summary: Update admin configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminConfigUpdate"
+      responses:
+        "200":
+          description: Updated config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminConfig"
+
+  /admin/hotspots:
+    get:
+      operationId: adminListHotspots
+      tags: [admin]
+      summary: Admin list all hotspots including seeds
+      responses:
+        "200":
+          description: All hotspots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Hotspot"
+    post:
+      operationId: adminCreateHotspot
+      tags: [admin]
+      summary: Create a seed/demo hotspot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HotspotInput"
+      responses:
+        "201":
+          description: Created hotspot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hotspot"
+
+  /admin/hotspots/{id}:
+    patch:
+      operationId: adminUpdateHotspot
+      tags: [admin]
+      summary: Update a hotspot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HotspotUpdate"
+      responses:
+        "200":
+          description: Updated hotspot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hotspot"
+    delete:
+      operationId: adminDeleteHotspot
+      tags: [admin]
+      summary: Delete a hotspot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: Admin list all users
+      responses:
+        "200":
+          description: All users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
+  /admin/users/{id}/block:
+    post:
+      operationId: adminBlockUser
+      tags: [admin]
+      summary: Block a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /admin/users/{id}/unblock:
+    post:
+      operationId: adminUnblockUser
+      tags: [admin]
+      summary: Unblock a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User unblocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Admin dashboard statistics
+      responses:
+        "200":
+          description: Admin statistics overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Hotspot:
+      type: object
+      required: [id, lat, lng, intensity, clickCount, isSeed, isActive, venueName, city, createdAt]
+      properties:
+        id:
+          type: integer
+        lat:
+          type: number
+        lng:
+          type: number
+        intensity:
+          type: string
+          enum: [low, medium, high, bomb]
+        clickCount:
+          type: integer
+        isSeed:
+          type: boolean
+        isActive:
+          type: boolean
+        venueOsmId:
+          type: ["string", "null"]
+        venueName:
+          type: string
+        venueType:
+          type: ["string", "null"]
+        city:
+          type: string
+        area:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        expiresAt:
+          type: ["string", "null"]
+
+    HotspotInput:
+      type: object
+      required: [lat, lng, venueName, city]
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number
+        venueName:
+          type: string
+        venueOsmId:
+          type: ["string", "null"]
+        venueType:
+          type: string
+        city:
+          type: string
+        area:
+          type: string
+        intensity:
+          type: string
+          enum: [low, medium, high, bomb]
+        isSeed:
+          type: boolean
+        isActive:
+          type: boolean
+
+    HotspotUpdate:
+      type: object
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number
+        venueName:
+          type: string
+        venueOsmId:
+          type: ["string", "null"]
+        venueType:
+          type: string
+        city:
+          type: string
+        area:
+          type: string
+        intensity:
+          type: string
+          enum: [low, medium, high, bomb]
+        isActive:
+          type: boolean
+        clickCount:
+          type: integer
+
+    HotspotStats:
+      type: object
+      required: [totalActive, byIntensity, topCity, totalClicksToday]
+      properties:
+        totalActive:
+          type: integer
+        byIntensity:
+          type: object
+          properties:
+            low:
+              type: integer
+            medium:
+              type: integer
+            high:
+              type: integer
+            bomb:
+              type: integer
+          required: [low, medium, high, bomb]
+        topCity:
+          type: string
+        totalClicksToday:
+          type: integer
+
+    Click:
+      type: object
+      required: [id, deviceId, hotspotId, venueName, createdAt]
+      properties:
+        id:
+          type: integer
+        deviceId:
+          type: string
+        hotspotId:
+          type: integer
+        venueOsmId:
+          type: ["string", "null"]
+        venueName:
+          type: string
+        city:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    ClickInput:
+      type: object
+      required: [deviceId, lat, lng, venueName]
+      properties:
+        deviceId:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        venueName:
+          type: string
+        venueOsmId:
+          type: ["string", "null"]
+        city:
+          type: ["string", "null"]
+
+    CooldownResponse:
+      type: object
+      required: [canClick, secondsRemaining]
+      properties:
+        canClick:
+          type: boolean
+        secondsRemaining:
+          type: integer
+        nextClickAt:
+          type: ["string", "null"]
+
+    User:
+      type: object
+      required: [id, deviceId, nickname, clickCount, isBlocked, createdAt]
+      properties:
+        id:
+          type: integer
+        deviceId:
+          type: string
+        nickname:
+          type: string
+        clickCount:
+          type: integer
+        isBlocked:
+          type: boolean
+        createdAt:
+          type: string
+
+    UserInput:
+      type: object
+      required: [deviceId, nickname, pin]
+      properties:
+        deviceId:
+          type: string
+        nickname:
+          type: string
+        pin:
+          type: string
+
+    PinVerifyInput:
+      type: object
+      required: [pin]
+      properties:
+        pin:
+          type: string
+
+    PinVerifyResult:
+      type: object
+      required: [valid]
+      properties:
+        valid:
+          type: boolean
+
+    UserStats:
+      type: object
+      required: [clickCount, badge, recentClicks]
+      properties:
+        clickCount:
+          type: integer
+        badge:
+          type: string
+        badgeLabel:
+          type: string
+        recentClicks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Click"
+
+    PublicConfig:
+      type: object
+      required: [clickDurationMinutes, clickCooldownMinutes, maxVenuesShown, defaultRadiusMeters, appTextMainButton]
+      properties:
+        clickDurationMinutes:
+          type: integer
+        clickCooldownMinutes:
+          type: integer
+        maxVenuesShown:
+          type: integer
+        defaultRadiusMeters:
+          type: integer
+        appTextMainButton:
+          type: string
+
+    AdminConfig:
+      type: object
+      required: [id, clickDurationMinutes, clickCooldownMinutes, maxVenuesShown, defaultRadiusMeters]
+      properties:
+        id:
+          type: integer
+        clickDurationMinutes:
+          type: integer
+        clickCooldownMinutes:
+          type: integer
+        maxVenuesShown:
+          type: integer
+        defaultRadiusMeters:
+          type: integer
+        appTextMainButton:
+          type: string
+        updatedAt:
+          type: string
+
+    AdminConfigUpdate:
+      type: object
+      properties:
+        clickDurationMinutes:
+          type: integer
+        clickCooldownMinutes:
+          type: integer
+        maxVenuesShown:
+          type: integer
+        defaultRadiusMeters:
+          type: integer
+        appTextMainButton:
+          type: string
+
+    AdminStats:
+      type: object
+      required: [totalUsers, totalClicks, activeHotspots, clicksToday, topVenues]
+      properties:
+        totalUsers:
+          type: integer
+        totalClicks:
+          type: integer
+        activeHotspots:
+          type: integer
+        clicksToday:
+          type: integer
+        topVenues:
+          type: array
+          items:
+            type: object
+            required: [venueName, clickCount]
+            properties:
+              venueName:
+                type: string
+              clickCount:
+                type: integer

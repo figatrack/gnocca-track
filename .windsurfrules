@@ -1,0 +1,22 @@
+# GnoccaTrack Adaptive Quality Rules
+
+Classify the project phase before proposing or applying quality changes:
+
+- appena iniziato: keep structure minimal; avoid CI, broad linting, or test frameworks unless explicitly requested.
+- in sviluppo attivo / da consolidare: prefer lightweight repeatable checks, documentation, and targeted safety fixes.
+- quasi pronto alla consegna: require typecheck, build, audit, environment documentation, and focused smoke checks.
+- gia online o sensibile: do not change runtime behavior, database schema, deploy settings, or data flows without explicit approval.
+
+Current phase: in sviluppo attivo / da consolidare.
+
+Operational rules:
+
+- Use `pnpm` only.
+- Run `pnpm run check` before considering work complete when code/config changes are made.
+- Run `pnpm run build` for release-facing or cross-package changes.
+- Do not add lint, test frameworks, CI, deployment workflows, or database migrations unless they solve an immediate project risk.
+- Do not modify runtime logic, layout, copy, database data, generated API clients, or deployment settings without a concrete reason.
+- Regenerate API clients only after changing `lib/api-spec/openapi.yaml`.
+- Do not run `pnpm --filter @workspace/db run push` without explicit approval and a valid target database.
+- Keep frontend local development on port `5001`; API defaults to `5002`.
+- Keep secrets out of the repo; use `.env.example` for documentation only.
