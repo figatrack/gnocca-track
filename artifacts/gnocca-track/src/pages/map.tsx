@@ -910,12 +910,14 @@ function SheetVenues({
   void onClose;
   const [searchTerm, setSearchTerm] = useState("");
   const normalizedSearch = searchTerm.trim().toLowerCase();
-  const filteredVenues = normalizedSearch
-    ? venues.filter((v) =>
-      v.name.toLowerCase().includes(normalizedSearch) ||
-      (v.type ?? "").toLowerCase().includes(normalizedSearch)
-    )
-    : venues;
+  const filteredVenues = useMemo(() => (
+    normalizedSearch
+      ? venues.filter((v) =>
+        v.name.toLowerCase().includes(normalizedSearch) ||
+        (v.type ?? "").toLowerCase().includes(normalizedSearch)
+      )
+      : venues
+  ), [normalizedSearch, venues]);
 
   return (
     <motion.div
