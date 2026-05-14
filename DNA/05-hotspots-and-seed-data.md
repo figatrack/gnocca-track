@@ -40,6 +40,14 @@ Seed hotspots make the app feel alive during the initial launch phase before rea
 - Firenze (1): Oltrarno
 - Palermo (1): Vucciria
 
+**Current operational test hotspots:** 50 Bologna test hotspots:
+- Names: `Bologna Test Focolaio 01` through `Bologna Test Focolaio 50`
+- `venue_osm_id`: `test/bologna/01` through `test/bologna/50`
+- `city = 'Bologna'`
+- `is_seed = true`, `is_active = true`, `expires_at = NULL`
+- Purpose: visible QA/demo density in Bologna while validating marker animation and map behavior
+- Remove or deactivate these before a real production launch if test density is no longer desired
+
 **Properties of seed hotspots:**
 - `is_seed = true`
 - `is_active = true`

@@ -7,7 +7,7 @@ GnoccaTrack uses a standard PostgreSQL database via Drizzle ORM. The schema maps
 1. Create a Supabase project at [supabase.com](https://supabase.com)
 2. Run the full SQL in `DNA/10-supabase-sql-scripts.md` in the Supabase SQL Editor (Steps 1–13)
 3. Set `DATABASE_URL` to the Supabase connection string (see below)
-4. Deploy the API server to Render with the new DATABASE_URL secret
+4. Deploy the unified Render Web Service with the new DATABASE_URL secret
 
 ## Connection String
 
@@ -70,6 +70,6 @@ See Step 6 in `DNA/10-supabase-sql-scripts.md` for full RLS policies.
 3. Set build command: `pnpm run build`
 4. Set start command: `node artifacts/api-server/dist/index.mjs`
 5. Add env vars: `DATABASE_URL`, `ADMIN_PIN`, `NODE_ENV=production`, `PORT=10000`
-6. Add a second Web Service for the frontend static build (or use Render Static Site)
+6. Keep a single Web Service: Express serves `/api/*` and the built Vite frontend
 
 See `DNA/09-github-and-deployment.md` for full deployment steps.

@@ -18,7 +18,8 @@
 
 ### Pre-Push Checklist
 ```bash
-pnpm run typecheck          # must pass
+pnpm run check              # must pass
+pnpm --filter @workspace/gnocca-track run build # must succeed
 pnpm --filter @workspace/api-server run build  # must succeed
 # manual test: onboarding flow
 # manual test: Qui Gnocca button
@@ -30,7 +31,10 @@ pnpm --filter @workspace/api-server run build  # must succeed
 - Supabase keys or any `.env` with real secrets
 - `node_modules/`
 - `dist/` or `build/` output folders
+- local backups
 - Any file containing real user data
+
+The operational `.env` must remain available in the local project folder and in local operational backups, but it must not be committed or pushed.
 
 ## Deployment (Render)
 
@@ -67,3 +71,18 @@ For the single-service deployment, `CORS_ORIGIN` can be omitted because frontend
 3. Load frontend → onboarding screen
 4. Complete onboarding → map screen with hotspot markers
 5. Admin panel at `/admina` → stats visible
+
+## Local Operational Backups
+
+There is no versioned backup directory in this repository. Local operational backups should be created outside the Git working tree, for example:
+
+```bash
+../Gnocca-Track-backups/gnocca-track-backup-YYYYMMDD-HHMMSS.tar.gz
+```
+
+Backup contents:
+- Include source code, `DNA`, `README.md`, config files, lockfile, `render.yaml`, and operational env files such as `.env`.
+- Exclude `.git`, `node_modules`, `dist`, `.local`, coverage, caches, logs, TypeScript build info, and generated runtime artifacts.
+- Do not commit backup archives.
+
+This keeps a restored/exported project operational because required local env values are present, while Git remains free of secrets and bulky artifacts.
