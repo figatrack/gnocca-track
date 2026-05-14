@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import maplibregl from "maplibre-gl";
 import type { StyleSpecification } from "maplibre-gl";
@@ -7,10 +7,8 @@ import {
   useListHotspots,
   useRegisterClick,
   useGetCooldownStatus,
-  useGetHotspotStats,
   getListHotspotsQueryKey,
   getGetCooldownStatusQueryKey,
-  getGetHotspotStatsQueryKey,
 } from "@workspace/api-client-react";
 import type { Hotspot } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -51,6 +49,15 @@ interface HotspotMarkerEntry {
   clickCount: number;
 }
 
+interface OverpassElement {
+  id: number;
+  type?: string;
+  lat?: number;
+  lon?: number;
+  center?: { lat?: number; lon?: number };
+  tags?: { name?: string; amenity?: string };
+}
+
 const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   maxVenuesShown: 6,
   defaultRadiusMeters: 150,
@@ -58,6 +65,9 @@ const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
 };
 
 const CARTO_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const HOTSPOT_RADIUS_METERS = 50_000;
+const MIN_VENUE_RADIUS_METERS = 300;
+const DIRECT_CONFIRM_DISTANCE_METERS = 80;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -109,21 +119,28 @@ async function fetchNearbyVenues(
   radiusMeters: number,
   maxVenues: number,
 ): Promise<NearbyVenue[]> {
-  const query = `[out:json][timeout:10];(node["amenity"~"bar|pub|restaurant|cafe"](around:${radiusMeters},${lat},${lng});node["amenity"="nightclub"](around:${radiusMeters},${lat},${lng}););out body;`;
+  const query = `[out:json][timeout:10];(node["amenity"~"^(bar|pub|restaurant|cafe|nightclub)$"](around:${radiusMeters},${lat},${lng});way["amenity"~"^(bar|pub|restaurant|cafe|nightclub)$"](around:${radiusMeters},${lat},${lng});relation["amenity"~"^(bar|pub|restaurant|cafe|nightclub)$"](around:${radiusMeters},${lat},${lng}););out center;`;
   try {
     const resp = await fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: query });
     if (!resp.ok) return [];
     const data = await resp.json();
-    return (data.elements ?? [])
-      .filter((el: { tags?: { name?: string } }) => el.tags?.name)
-      .map((el: { id: number; lat: number; lon: number; tags: { name: string; amenity?: string } }) => ({
+    const elements = (data.elements ?? []) as OverpassElement[];
+    const venues = elements.reduce<NearbyVenue[]>((acc, el) => {
+      const venueLat = el.lat ?? el.center?.lat;
+      const venueLng = el.lon ?? el.center?.lon;
+      if (!el.tags?.name || venueLat === undefined || venueLng === undefined) return acc;
+      acc.push({
         name: el.tags.name,
-        lat: el.lat,
-        lng: el.lon,
-        distance: haversineDistance(lat, lng, el.lat, el.lon),
-        osmId: String(el.id),
+        lat: venueLat,
+        lng: venueLng,
+        distance: haversineDistance(lat, lng, venueLat, venueLng),
+        osmId: `${el.type ?? "osm"}/${el.id}`,
         type: el.tags.amenity,
-      }))
+      });
+      return acc;
+    }, []);
+
+    return venues
       .sort((a: NearbyVenue, b: NearbyVenue) => a.distance - b.distance)
       .slice(0, maxVenues);
   } catch {
@@ -235,23 +252,31 @@ export default function MapPage() {
   const tileStyle = theme === "dark"
     ? "https://tiles.openfreemap.org/styles/dark"
     : "https://tiles.openfreemap.org/styles/liberty";
+  const hotspotQueryParams = useMemo(() => {
+    if (!userPos) return undefined;
+    return {
+      lat: Number(userPos.lat.toFixed(3)),
+      lng: Number(userPos.lng.toFixed(3)),
+      radius: HOTSPOT_RADIUS_METERS,
+    };
+  }, [userPos]);
 
   // ─── Queries ─────────────────────────────────────────────────────────────
 
-  const { data: hotspots = [] } = useListHotspots(undefined, {
-    query: { queryKey: getListHotspotsQueryKey(), refetchInterval: 30000 },
+  const { data: hotspots = [] } = useListHotspots(hotspotQueryParams, {
+    query: {
+      queryKey: getListHotspotsQueryKey(hotspotQueryParams),
+      enabled: !!stored && !!hotspotQueryParams,
+      refetchInterval: 60000,
+    },
   });
 
   const { data: cooldown } = useGetCooldownStatus(stored?.deviceId ?? "", {
     query: {
       queryKey: getGetCooldownStatusQueryKey(stored?.deviceId ?? ""),
       enabled: !!stored?.deviceId,
-      refetchInterval: 10000,
+      refetchInterval: 30000,
     },
-  });
-
-  const { data: stats } = useGetHotspotStats({
-    query: { queryKey: getGetHotspotStatsQueryKey() },
   });
 
   const registerClick = useRegisterClick();
@@ -518,31 +543,26 @@ export default function MapPage() {
       return;
     }
 
+    const venueSearchRadius = Math.max(publicConfig.defaultRadiusMeters, MIN_VENUE_RADIUS_METERS);
     const venues = await fetchVenuesCached(
       pos.lat,
       pos.lng,
-      publicConfig.defaultRadiusMeters,
+      venueSearchRadius,
       publicConfig.maxVenuesShown,
     );
     setNearbyVenues(venues);
 
     if (venues.length === 0) {
-      const nearest = [...hotspots].sort(
-        (a, b) =>
-          haversineDistance(pos.lat, pos.lng, a.lat, a.lng) -
-          haversineDistance(pos.lat, pos.lng, b.lat, b.lng)
-      )[0];
-      if (nearest) {
-        setSelectedVenue({ name: nearest.venueName, lat: nearest.lat, lng: nearest.lng, distance: 0 });
-        setSheet("confirm");
-      } else {
-        toast({ title: "Nessun locale trovato", description: "Avvicinati a un bar o pub" });
-      }
+      setSelectedVenue(null);
+      toast({
+        title: "Nessun locale vicino trovato",
+        description: `Non ho trovato bar, pub o locali entro ${venueSearchRadius}m`,
+      });
       return;
     }
 
     const nearest = venues[0];
-    if (nearest.distance < 80) {
+    if (nearest.distance < DIRECT_CONFIRM_DISTANCE_METERS) {
       setSelectedVenue(nearest);
       setSheet("confirm");
     } else {
@@ -557,8 +577,8 @@ export default function MapPage() {
       await registerClick.mutateAsync({
         data: {
           deviceId: stored.deviceId,
-          lat: pos.lat,
-          lng: pos.lng,
+          lat: selectedVenue.lat,
+          lng: selectedVenue.lng,
           venueName: selectedVenue.name,
           venueOsmId: selectedVenue.osmId,
           city: null,
@@ -567,7 +587,7 @@ export default function MapPage() {
       setSheet(null);
       setClickSuccess(true);
       setTimeout(() => setClickSuccess(false), 2500);
-      queryClient.invalidateQueries({ queryKey: getListHotspotsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ["/api/hotspots"] });
       queryClient.invalidateQueries({ queryKey: getGetCooldownStatusQueryKey(stored.deviceId) });
     } catch (err: unknown) {
       const anyErr = err as { status?: number };
@@ -660,12 +680,12 @@ export default function MapPage() {
         </div>
 
         {/* Live hotspot count pill */}
-        {stats && (
+        {gpsState === "ok" && (
           <div className="flex justify-center">
             <div className="bg-card/80 backdrop-blur-sm border border-border rounded-full px-4 py-1.5 flex items-center gap-2 shadow-lg">
               <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
               <span className="text-xs font-semibold text-foreground">
-                {stats.totalActive} hotspot attivi
+                {hotspots.length} focolai in zona
               </span>
             </div>
           </div>

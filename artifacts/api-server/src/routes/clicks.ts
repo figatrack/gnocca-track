@@ -87,7 +87,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
           intensity: computeIntensity(newCount),
           isActive: true,
           venueOsmId: existingHotspot.venueOsmId ?? venueOsmId ?? null,
-          ...(existingHotspot.isSeed ? {} : { expiresAt }),
+          ...(existingHotspot.isSeed ? {} : { lat, lng, expiresAt }),
         })
         .where(eq(hotspotsTable.id, existingHotspot.id));
       hotspotId = existingHotspot.id;
