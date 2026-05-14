@@ -120,10 +120,25 @@
   * {
     @apply border-border;
   }
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-height: 100%;
+  }
   body {
     @apply font-sans antialiased bg-background text-foreground selection:bg-primary selection:text-white;
     -webkit-tap-highlight-color: transparent;
+    margin: 0;
+    overscroll-behavior: none;
   }
+}
+
+.map-root,
+.map-root .maplibregl-canvas-container,
+.map-root .maplibregl-canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* Landscape orientation block — shown only in landscape on mobile */

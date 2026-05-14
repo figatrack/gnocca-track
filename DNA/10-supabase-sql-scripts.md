@@ -101,6 +101,9 @@ CREATE INDEX IF NOT EXISTS idx_users_device_id
 
 CREATE INDEX IF NOT EXISTS idx_users_nickname
   ON public.users (nickname);
+
+CREATE UNIQUE INDEX IF NOT EXISTS users_nickname_lower_key
+  ON public.users (lower(nickname));
 ```
 
 ---

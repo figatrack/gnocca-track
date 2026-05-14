@@ -137,10 +137,56 @@ export const GetCooldownStatusResponse = zod.object({
 /**
  * @summary Create an anonymous user account
  */
+export const createUserBodyDeviceIdMin = 8;
+export const createUserBodyDeviceIdMax = 128;
+
+export const createUserBodyNicknameMin = 2;
+export const createUserBodyNicknameMax = 20;
+
+export const createUserBodyPinRegExp = new RegExp("^[0-9]{4}$");
+
 export const CreateUserBody = zod.object({
+  deviceId: zod
+    .string()
+    .min(createUserBodyDeviceIdMin)
+    .max(createUserBodyDeviceIdMax),
+  nickname: zod
+    .string()
+    .min(createUserBodyNicknameMin)
+    .max(createUserBodyNicknameMax),
+  pin: zod.string().regex(createUserBodyPinRegExp),
+});
+
+/**
+ * @summary Login or restore an anonymous user account with nickname and PIN
+ */
+export const loginUserBodyDeviceIdMin = 8;
+export const loginUserBodyDeviceIdMax = 128;
+
+export const loginUserBodyNicknameMin = 2;
+export const loginUserBodyNicknameMax = 20;
+
+export const loginUserBodyPinRegExp = new RegExp("^[0-9]{4}$");
+
+export const LoginUserBody = zod.object({
+  deviceId: zod
+    .string()
+    .min(loginUserBodyDeviceIdMin)
+    .max(loginUserBodyDeviceIdMax),
+  nickname: zod
+    .string()
+    .min(loginUserBodyNicknameMin)
+    .max(loginUserBodyNicknameMax),
+  pin: zod.string().regex(loginUserBodyPinRegExp),
+});
+
+export const LoginUserResponse = zod.object({
+  id: zod.number(),
   deviceId: zod.string(),
   nickname: zod.string(),
-  pin: zod.string(),
+  clickCount: zod.number(),
+  isBlocked: zod.boolean(),
+  createdAt: zod.string(),
 });
 
 /**
@@ -166,8 +212,10 @@ export const VerifyUserPinParams = zod.object({
   deviceId: zod.coerce.string(),
 });
 
+export const verifyUserPinBodyPinRegExp = new RegExp("^[0-9]{4}$");
+
 export const VerifyUserPinBody = zod.object({
-  pin: zod.string(),
+  pin: zod.string().regex(verifyUserPinBodyPinRegExp),
 });
 
 export const VerifyUserPinResponse = zod.object({

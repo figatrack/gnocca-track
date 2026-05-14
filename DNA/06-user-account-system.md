@@ -19,27 +19,31 @@ No real personal data. No email. No phone. No tracking. The app is usable anonym
 2. Step 1: User enters nickname
 3. Step 2: User enters 4-digit PIN (iOS-style digit inputs)
 4. POST `/api/users` with `{ deviceId, nickname, pin }`
-5. Server creates user, returns user object
-6. Client stores `{ deviceId, nickname }` in localStorage
-7. Redirect to `/` (map)
+5. If nickname or device already exists, POST `/api/users/login` with `{ deviceId, nickname, pin }`
+6. Server verifies the PIN and can restore the account onto the current device
+7. Client stores `{ deviceId, nickname }` in localStorage
+8. Redirect to `/` (map)
 
 ## Identity Persistence
 
 - `deviceId` persists across sessions (localStorage)
-- If user clears localStorage → creates a new identity on next visit
-- If user loses their device → can't recover account (by design — anonymous)
+- If user clears localStorage but keeps the same browser storage deviceId → they can restore with nickname + PIN
+- If user changes device/browser → they can restore with nickname + PIN and the account moves to the new deviceId
 
 ## PIN Usage
 
 - PIN is used to protect the profile view (future: optional)
 - PIN is hashed with scrypt + per-user random salt before storage
 - The plain PIN is never stored anywhere
+- PIN login/restore: POST `/api/users/login`
 - PIN verification: POST `/api/users/{deviceId}/verify-pin`
+- Failed PIN attempts are rate-limited in the API process
 
 ## Rate Limiting via deviceId
 
 The `deviceId` is used to enforce:
 - Click cooldown (tracked in `clicks` table)
+- Registered-user requirement before accepting clicks
 - Future: block abusive devices by deviceId in admin
 
 ## Badges

@@ -60,7 +60,8 @@ API_PROXY_TARGET=http://localhost:5002
 
 ## Product Notes
 
-- Anonymous identity uses `deviceId`, nickname, and PIN hash.
+- Anonymous identity uses `deviceId`, nickname, and a server-side scrypt PIN hash.
+- Existing profiles can be restored with nickname + PIN; unauthenticated devices cannot register clicks.
 - Hotspot intensity is computed from `clickCount`.
 - Seed hotspots use `is_seed=true` and `expires_at=NULL`.
 - The frontend calls `/api/*`; in local development Vite proxies those calls to `API_PROXY_TARGET`.

@@ -30,7 +30,12 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     .from(usersTable)
     .where(eq(usersTable.deviceId, deviceId));
 
-  if (user?.isBlocked) {
+  if (!user) {
+    res.status(401).json({ error: "User is not registered" });
+    return;
+  }
+
+  if (user.isBlocked) {
     res.status(403).json({ error: "User is blocked" });
     return;
   }

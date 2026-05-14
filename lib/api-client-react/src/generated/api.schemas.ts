@@ -142,12 +142,37 @@ export interface User {
 }
 
 export interface UserInput {
+  /**
+   * @minLength 8
+   * @maxLength 128
+   */
   deviceId: string;
+  /**
+   * @minLength 2
+   * @maxLength 20
+   */
   nickname: string;
+  /** @pattern ^[0-9]{4}$ */
+  pin: string;
+}
+
+export interface UserLoginInput {
+  /**
+   * @minLength 8
+   * @maxLength 128
+   */
+  deviceId: string;
+  /**
+   * @minLength 2
+   * @maxLength 20
+   */
+  nickname: string;
+  /** @pattern ^[0-9]{4}$ */
   pin: string;
 }
 
 export interface PinVerifyInput {
+  /** @pattern ^[0-9]{4}$ */
   pin: string;
 }
 

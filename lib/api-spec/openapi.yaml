@@ -201,6 +201,29 @@ paths:
         "409":
           description: Nickname already taken
 
+  /users/login:
+    post:
+      operationId: loginUser
+      tags: [users]
+      summary: Login or restore an anonymous user account with nickname and PIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserLoginInput"
+      responses:
+        "200":
+          description: User authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Invalid nickname or PIN
+        "409":
+          description: Device already linked to another account
+
   /users/{deviceId}:
     get:
       operationId: getUser
@@ -620,10 +643,31 @@ components:
       properties:
         deviceId:
           type: string
+          minLength: 8
+          maxLength: 128
         nickname:
           type: string
+          minLength: 2
+          maxLength: 20
         pin:
           type: string
+          pattern: "^[0-9]{4}$"
+
+    UserLoginInput:
+      type: object
+      required: [deviceId, nickname, pin]
+      properties:
+        deviceId:
+          type: string
+          minLength: 8
+          maxLength: 128
+        nickname:
+          type: string
+          minLength: 2
+          maxLength: 20
+        pin:
+          type: string
+          pattern: "^[0-9]{4}$"
 
     PinVerifyInput:
       type: object
@@ -631,6 +675,7 @@ components:
       properties:
         pin:
           type: string
+          pattern: "^[0-9]{4}$"
 
     PinVerifyResult:
       type: object

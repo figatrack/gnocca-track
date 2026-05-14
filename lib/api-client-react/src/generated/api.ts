@@ -34,6 +34,7 @@ import type {
   PublicConfig,
   User,
   UserInput,
+  UserLoginInput,
   UserStats,
 } from "./api.schemas";
 
@@ -798,6 +799,92 @@ export const useCreateUser = <
   TContext
 > => {
   return useMutation(getCreateUserMutationOptions(options));
+};
+
+/**
+ * @summary Login or restore an anonymous user account with nickname and PIN
+ */
+export const getLoginUserUrl = () => {
+  return `/api/users/login`;
+};
+
+export const loginUser = async (
+  userLoginInput: UserLoginInput,
+  options?: RequestInit
+): Promise<User> => {
+  return customFetch<User>(getLoginUserUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(userLoginInput),
+  });
+};
+
+export const getLoginUserMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof loginUser>>,
+    TError,
+    { data: BodyType<UserLoginInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof loginUser>>,
+  TError,
+  { data: BodyType<UserLoginInput> },
+  TContext
+> => {
+  const mutationKey = ["loginUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof loginUser>>,
+    { data: BodyType<UserLoginInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return loginUser(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LoginUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof loginUser>>
+>;
+export type LoginUserMutationBody = BodyType<UserLoginInput>;
+export type LoginUserMutationError = ErrorType<void>;
+
+/**
+ * @summary Login or restore an anonymous user account with nickname and PIN
+ */
+export const useLoginUser = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof loginUser>>,
+    TError,
+    { data: BodyType<UserLoginInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof loginUser>>,
+  TError,
+  { data: BodyType<UserLoginInput> },
+  TContext
+> => {
+  return useMutation(getLoginUserMutationOptions(options));
 };
 
 /**

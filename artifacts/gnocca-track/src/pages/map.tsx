@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import maplibregl from "maplibre-gl";
+import type { StyleSpecification } from "maplibre-gl";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useListHotspots,
@@ -56,6 +57,8 @@ const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   appTextMainButton: "Qui Gnocca",
 };
 
+const CARTO_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -72,6 +75,32 @@ async function fetchPublicConfig(): Promise<PublicConfig> {
   const resp = await fetch("/api/config");
   if (!resp.ok) throw new Error("Unable to load app config");
   return { ...DEFAULT_PUBLIC_CONFIG, ...(await resp.json()) };
+}
+
+function createRasterFallbackStyle(theme: "dark" | "light"): StyleSpecification {
+  const variant = theme === "dark" ? "dark_all" : "light_all";
+  return {
+    version: 8,
+    sources: {
+      carto: {
+        type: "raster",
+        tiles: [
+          `https://a.basemaps.cartocdn.com/${variant}/{z}/{x}/{y}.png`,
+          `https://b.basemaps.cartocdn.com/${variant}/{z}/{x}/{y}.png`,
+          `https://c.basemaps.cartocdn.com/${variant}/{z}/{x}/{y}.png`,
+        ],
+        tileSize: 256,
+        attribution: CARTO_ATTRIBUTION,
+      },
+    },
+    layers: [
+      {
+        id: "carto",
+        type: "raster",
+        source: "carto",
+      },
+    ],
+  };
 }
 
 async function fetchNearbyVenues(
@@ -187,6 +216,8 @@ export default function MapPage() {
   const markersRef = useRef<Map<number, HotspotMarkerEntry>>(new Map());
   const userMarkerRef = useRef<maplibregl.Marker | null>(null);
   const activeWatchRef = useRef<number | null>(null);
+  const mapLoadedRef = useRef(false);
+  const fallbackAppliedRef = useRef(false);
 
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsState, setGpsState] = useState<GpsState>("waiting");
@@ -303,6 +334,24 @@ export default function MapPage() {
     if (!stored) { navigate("/onboarding"); return; }
     if (!mapContainer.current || map.current) return;
 
+    const resizeMap = () => {
+      requestAnimationFrame(() => {
+        map.current?.resize();
+        requestAnimationFrame(() => map.current?.resize());
+      });
+    };
+
+    const applyRasterFallback = () => {
+      if (!map.current || fallbackAppliedRef.current) return;
+      fallbackAppliedRef.current = true;
+      try {
+        map.current.setStyle(createRasterFallbackStyle(theme));
+        resizeMap();
+      } catch {
+        // Keep the UI usable even if the external raster fallback is unavailable.
+      }
+    };
+
     // MapLibre — mobile-safe options
     map.current = new maplibregl.Map({
       container: mapContainer.current,
@@ -318,19 +367,38 @@ export default function MapPage() {
       maxZoom: 19,
       minZoom: 5,
     });
+    mapLoadedRef.current = false;
+    fallbackAppliedRef.current = false;
 
     map.current.addControl(
       new maplibregl.AttributionControl({ compact: true }),
       "bottom-left"
     );
 
+    map.current.once("load", () => {
+      mapLoadedRef.current = true;
+      resizeMap();
+    });
+
+    map.current.on("error", () => {
+      if (!mapLoadedRef.current) applyRasterFallback();
+    });
+
+    const fallbackTimer = window.setTimeout(() => {
+      if (!mapLoadedRef.current || !map.current?.isStyleLoaded()) {
+        applyRasterFallback();
+      }
+    }, 6000);
+
     // Resize map on orientation change and virtual keyboard events
     const handleResize = () => {
       // small delay so browser finishes its own layout pass first
-      setTimeout(() => map.current?.resize(), 100);
+      setTimeout(resizeMap, 100);
     };
     window.addEventListener("resize", handleResize);
     window.addEventListener("orientationchange", handleResize);
+    window.visualViewport?.addEventListener("resize", handleResize);
+    resizeMap();
 
     // Re-acquire GPS when PWA comes back to foreground (iOS kills background watches)
     const handleVisibility = () => {
@@ -349,9 +417,11 @@ export default function MapPage() {
     startWatch(true);
 
     return () => {
+      window.clearTimeout(fallbackTimer);
       clearAllWatches();
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("orientationchange", handleResize);
+      window.visualViewport?.removeEventListener("resize", handleResize);
       document.removeEventListener("visibilitychange", handleVisibility);
       markersRef.current.forEach((entry) => entry.marker.remove());
       markersRef.current.clear();
@@ -360,6 +430,8 @@ export default function MapPage() {
       userMarkerRef.current = null;
       userMarkerElRef.current = null;
       userPosRef.current = null;
+      mapLoadedRef.current = false;
+      fallbackAppliedRef.current = false;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -403,6 +475,7 @@ export default function MapPage() {
         try { map.current?.setStyle(tileStyle); } catch {}
       });
     }
+    fallbackAppliedRef.current = false;
   }, [tileStyle]);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
@@ -556,7 +629,7 @@ export default function MapPage() {
       style={{ height: "100dvh" }}
     >
       {/* Map canvas */}
-      <div ref={mapContainer} className="absolute inset-0" />
+      <div ref={mapContainer} className="absolute inset-0 map-root" />
 
       {/* Top overlay: header + live pill + GPS bar stacked */}
       <div

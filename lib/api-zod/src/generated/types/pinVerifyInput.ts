@@ -7,5 +7,6 @@
  */
 
 export interface PinVerifyInput {
+  /** @pattern ^[0-9]{4}$ */
   pin: string;
 }

@@ -28,4 +28,5 @@ export * from "./pinVerifyResult";
 export * from "./publicConfig";
 export * from "./user";
 export * from "./userInput";
+export * from "./userLoginInput";
 export * from "./userStats";

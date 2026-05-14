@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useCreateUser } from "@workspace/api-client-react";
+import { useCreateUser, useLoginUser } from "@workspace/api-client-react";
 import { getDeviceId, setStoredUser } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
 import appIcon from "@/assets/app-icon.png";
@@ -14,6 +14,20 @@ export default function OnboardingPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const createUser = useCreateUser();
+  const loginUser = useLoginUser();
+
+  const isSubmitting = createUser.isPending || loginUser.isPending;
+
+  const getErrorStatus = (err: unknown) => (err as { status?: number })?.status;
+  const getErrorMessage = (err: unknown) => {
+    const data = (err as { data?: { error?: string } })?.data;
+    return data?.error ?? "";
+  };
+
+  const completeAuth = (user: { deviceId: string; nickname: string }) => {
+    setStoredUser({ deviceId: user.deviceId, nickname: user.nickname });
+    navigate("/");
+  };
 
   const handleNicknameNext = () => {
     if (nickname.trim().length < 2) {
@@ -48,35 +62,34 @@ export default function OnboardingPage() {
       return;
     }
     const deviceId = getDeviceId();
+    const credentials = { deviceId, nickname: nickname.trim(), pin: fullPin };
     try {
-      await createUser.mutateAsync({
-        data: { deviceId, nickname: nickname.trim(), pin: fullPin },
-      });
-      setStoredUser({ deviceId, nickname: nickname.trim() });
-      navigate("/");
+      const user = await createUser.mutateAsync({ data: credentials });
+      completeAuth(user);
     } catch (err: unknown) {
-      const anyErr = err as { status?: number; response?: { data?: { error?: string } } };
-      if (anyErr?.status === 409) {
-        const reason = anyErr?.response?.data?.error ?? "";
-        if (reason === "Device already registered") {
-          // Device already has an account — fetch it and log in
-          try {
-            const res = await fetch(`/api/users/${deviceId}`);
-            if (res.ok) {
-              const user = await res.json() as { nickname: string };
-              setStoredUser({ deviceId, nickname: user.nickname });
-              navigate("/");
-              return;
-            }
-          } catch { /* fall through */ }
-          toast({ title: "Profilo gia' esistente", description: "Torna alla home" });
-          navigate("/");
+      if (getErrorStatus(err) !== 409) {
+        toast({ title: "Errore", description: "Riprova tra poco" });
+        return;
+      }
+
+      try {
+        const user = await loginUser.mutateAsync({ data: credentials });
+        completeAuth(user);
+      } catch (loginErr: unknown) {
+        const status = getErrorStatus(loginErr);
+        const message = getErrorMessage(loginErr);
+        if (status === 401) {
+          toast({ title: "PIN errato", description: "Questo nickname esiste gia'" });
+        } else if (status === 403) {
+          toast({ title: "Profilo bloccato", description: "Contatta l'amministratore" });
+        } else if (status === 409 || message === "Device already linked to another account") {
+          toast({ title: "Dispositivo gia' associato", description: "Usa il profilo creato su questo dispositivo" });
+        } else if (status === 429) {
+          toast({ title: "Troppi tentativi", description: "Aspetta qualche minuto e riprova" });
         } else {
           toast({ title: "Nickname non disponibile", description: "Scegli un altro nickname" });
           setStep("nickname");
         }
-      } else {
-        toast({ title: "Errore", description: "Riprova tra poco" });
       }
     }
   };
@@ -135,13 +148,13 @@ export default function OnboardingPage() {
                 />
               ))}
             </div>
-            <button
+              <button
               onClick={handleFinish}
-              disabled={createUser.isPending}
+              disabled={isSubmitting}
               className="w-full py-4 rounded-2xl text-lg font-bold text-white disabled:opacity-60"
               style={{ background: "linear-gradient(135deg, #FF0880 0%, #c4006e 100%)" }}
             >
-              {createUser.isPending ? "Caricamento..." : "Inizia"}
+              {isSubmitting ? "Caricamento..." : "Inizia"}
             </button>
             <button
               onClick={() => setStep("nickname")}

@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UserInput {
+export interface UserLoginInput {
   /**
    * @minLength 8
    * @maxLength 128
