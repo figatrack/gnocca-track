@@ -1,4 +1,4 @@
-const CACHE_NAME = "gnocca-v2";
+const CACHE_NAME = "gnocca-v3";
 const scopePath = new URL(self.registration.scope).pathname.replace(/\/$/, "");
 const withScope = (path) => `${scopePath}${path}`;
 const STATIC_ASSETS = [
